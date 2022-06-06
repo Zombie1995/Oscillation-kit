@@ -2,6 +2,7 @@ using UnityEngine;
 
 public class Spring : MonoBehaviour
 {
+    [Header("Required Assets")]
     [SerializeField] private Sphere _sphere;
 
     private float _size = 3.735f;
