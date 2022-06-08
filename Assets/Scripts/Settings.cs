@@ -9,6 +9,7 @@ public class Settings : MonoBehaviour
     [SerializeField] private InputField _mass;
     [SerializeField] private InputField _dryFriction;
     [SerializeField] private InputField _viscousFriction;
+    [SerializeField] private InputField _deltaTime;
     [SerializeField] private Toggle _normalToggle;
     [SerializeField] private Toggle _dryFrictionToggle;
     [SerializeField] private Toggle _viscousFrictionToggle;
@@ -19,6 +20,7 @@ public class Settings : MonoBehaviour
         _mass.text = _sphere.Mass.ToString();
         _dryFriction.text = _sphere.DryFriction.ToString();
         _viscousFriction.text = _sphere.ViscousFriction.ToString();
+        _deltaTime.text = _sphere.DeltaTime.ToString();
     }
 
     private void Update()
@@ -27,6 +29,7 @@ public class Settings : MonoBehaviour
         float.TryParse(_mass.text, out _sphere.Mass);
         float.TryParse(_dryFriction.text, out _sphere.DryFriction);
         float.TryParse(_viscousFriction.text, out _sphere.ViscousFriction);
+        float.TryParse(_deltaTime.text, out _sphere.DeltaTime);
     }
 
     public void EnableNormalMode(bool isOn)

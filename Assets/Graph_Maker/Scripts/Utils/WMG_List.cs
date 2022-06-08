@@ -11,6 +11,7 @@ public class WMG_List<T> : IEnumerable<T>
 	#pragma warning disable 67
 	// editorChanged, countChanged, oneValChanged, index
 	public event Action<bool,bool,bool,int> Changed = delegate { };
+	public event Action FastChange = delegate { };
 	//public event Action BeforeChange = delegate { };
 	#pragma warning restore 67
 
@@ -65,7 +66,8 @@ public class WMG_List<T> : IEnumerable<T>
 	{
 		//BeforeChange();
 		list.Add(item);
-		Changed(false, true, false, -1);
+		//Changed(false, true, false, -1);
+		FastChange();
 	}
 	public void AddNoCb(T item, ref List<T> _list)
 	{

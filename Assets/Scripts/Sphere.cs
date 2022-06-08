@@ -13,6 +13,7 @@ public class Sphere : MonoBehaviour
     public float SpringResistance = 200.0f;
     public float DryFriction = 10.0f;
     public float ViscousFriction = 1.0f;
+    public float DeltaTime = 0.05f;
     [SerializeField] private float _oscillationRadius = 2.0f;
 
     [HideInInspector]
@@ -71,7 +72,7 @@ public class Sphere : MonoBehaviour
         if (_seriesTime < _maxSeriesTime)
         {
             _amplitudeSeries.pointValues.Add(new Vector2(_seriesTime, CurHeight));
-            _seriesTime += Time.deltaTime;
+            _seriesTime += DeltaTime;
         }
     }
 
@@ -92,7 +93,7 @@ public class Sphere : MonoBehaviour
                 {
                     _velocity = 0;
                     acceleration = 0;
-                    CurHeight -= CurHeight * Time.deltaTime;
+                    CurHeight -= CurHeight * DeltaTime;
                 }
                 else
                 {
@@ -104,9 +105,9 @@ public class Sphere : MonoBehaviour
                 break;
         }
 
-        _velocity += acceleration * Time.deltaTime;
+        _velocity += acceleration * DeltaTime;
 
-        CurHeight += (1 / 2f) * _velocity * Time.deltaTime;
+        CurHeight += (1 / 2f) * _velocity * DeltaTime;
 
         CurHeight = Mathf.Clamp(CurHeight, -_oscillationRadius, _oscillationRadius);
     }

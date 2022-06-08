@@ -773,6 +773,7 @@ public class WMG_Series : MonoBehaviour {
 		
 		pointValues.SetList (_pointValues);
 		pointValues.Changed += pointValuesListChanged;
+		pointValues.FastChange += dynamicPointValuesCountChanged;
 		
 		pointColors.SetList (_pointColors);
 		pointColors.Changed += pointColorsListChanged;
@@ -857,14 +858,145 @@ public class WMG_Series : MonoBehaviour {
 		theGraph.aSeriesPointsChanged ();
 		CreateOrDeleteSpritesBasedOnPointValues();
 		UpdateLineColor();
-		UpdatePointColor();
-		UpdateLineScale();
-		UpdatePointWidthHeight();
-		UpdateHideLines();
-		UpdateHidePoints();
-		UpdateNullVisibility();
-		UpdateLinePadding();
-		UpdateSprites();
+        UpdatePointColor();
+        UpdateLineScale();
+        UpdatePointWidthHeight();
+        UpdateHideLines();
+        UpdateHidePoints();
+        UpdateNullVisibility();
+        UpdateLinePadding();
+        UpdateSprites();
+    }
+
+	public void dynamicPointValuesCountChanged() {
+		theGraph.aSeriesPointsChanged ();
+		//CreateOrDeleteSpritesBasedOnPointValues();
+		int pointValuesCount = pointValues.Count;
+		createOrDeletePoints(pointValuesCount);
+		//UpdateLineScale();
+		for (int i = lines.Count > 0 ? lines.Count - 1 : 0; i < lines.Count; i++)
+		{
+			WMG_Link theLine = lines[i].GetComponent<WMG_Link>();
+			theLine.objectToScale.transform.localScale = new Vector3(lineScale, theLine.objectToScale.transform.localScale.y, theLine.objectToScale.transform.localScale.z);
+		}
+		//UpdateHideLines();
+		for (int i = lines.Count > 0 ? lines.Count - 1 : 0; i < lines.Count; i++)
+		{
+			if (hideLines || !seriesIsLine) theGraph.SetActive(lines[i], false);
+			else theGraph.SetActive(lines[i], true);
+		}
+		//UpdateSprites();
+		if (points.Count == 0) return;
+		List<GameObject> prevPoints = null;
+		if (theGraph.IsStacked)
+		{
+			for (int j = 1; j < theGraph.lineSeries.Count; j++)
+			{
+				if (!theGraph.activeInHierarchy(theGraph.lineSeries[j])) continue;
+				WMG_Series theSeries = theGraph.lineSeries[j].GetComponent<WMG_Series>();
+				if (theSeries == this)
+				{
+					if (!theGraph.activeInHierarchy(theGraph.lineSeries[j - 1])) continue;
+					WMG_Series prevSeries = theGraph.lineSeries[j - 1].GetComponent<WMG_Series>();
+					prevPoints = prevSeries.getPoints();
+				}
+			}
+		}
+		updateXdistBetween();
+		updateExtraXSpace();
+		for (int i = points.Count > 0 ? points.Count - 1 : 0; i < points.Count; i++) {
+			if (i >= pointValues.Count) break;
+			
+			float newX = 0;
+			float newY = (pointValues[i].y - yAxisOrienInd.AxisMinValue)/(yAxisOrienInd.AxisMaxValue - yAxisOrienInd.AxisMinValue) * theGraph.yAxisLengthOrienInd; // new y always based on the pointValues.y
+			
+			// If using xDistBetween then point positioning based on previous point point position
+			if (!theGraph.useGroups && UseXDistBetweenToSpace) {
+				if (i > 0) { // For points greater than 0, use the previous point position plus xDistBetween
+					float prevPosX = (theGraph.orientationType == WMG_Axis_Graph.orientationTypes.vertical) ? afterPositions[i-1].x : afterPositions[i-1].y;
+					newX = prevPosX + xDistBetweenPoints;
+				}
+				else { // For point 0, set initial x position to extraXSpace
+					newX = extraXSpace - (!seriesIsLine && theGraph.orientationType == WMG_Axis_Graph.orientationTypes.horizontal ? theGraph.barWidth : 0);
+				}
+			}
+			else if (theGraph.useGroups) { // Using groups, x values represent integer index of group
+				newX = extraXSpace + xDistBetweenPoints * (Mathf.Abs(pointValues[i].x) - 1);
+				newX -= (!seriesIsLine && theGraph.orientationType == WMG_Axis_Graph.orientationTypes.horizontal ? theGraph.barWidth : 0);
+			}
+			else { // Not using xDistBetween or groups, so use the actual x values in the Vector2 list
+				newX = (pointValues[i].x - xAxisOrienInd.AxisMinValue)/(xAxisOrienInd.AxisMaxValue - xAxisOrienInd.AxisMinValue) * theGraph.xAxisLengthOrienInd;
+			}
+			int newWidth = 0;
+			int newHeight = 0;
+			
+			if (seriesIsLine) {
+				newWidth = Mathf.RoundToInt(pointWidthHeight);
+				newHeight = Mathf.RoundToInt(pointWidthHeight);
+				
+				if (theGraph.graphType == WMG_Axis_Graph.graphTypes.line_stacked) {
+					if (prevPoints != null && i < prevPoints.Count) {
+						newY += (theGraph.orientationType == WMG_Axis_Graph.orientationTypes.vertical) ? theGraph.getSpritePositionY(prevPoints[i]) 
+							: theGraph.getSpritePositionX(prevPoints[i]);
+					}
+				}
+			}
+			else {
+				// For bar graphs, need to update sprites width and height based on positions
+				// For stacked percentage, need to set a y position based on the percentage of all series values combined
+				if (theGraph.graphType == WMG_Axis_Graph.graphTypes.bar_stacked_percent && theGraph.TotalPointValues.Count > i) {
+					newY = (pointValues[i].y - yAxisOrienInd.AxisMinValue) / theGraph.TotalPointValues[i] * theGraph.yAxisLengthOrienInd;
+				}
+
+				int barAxisAdjust = 0; // adjustment based on bar axis value
+				if (theGraph.graphType == WMG_Axis_Graph.graphTypes.bar_side || (theGraph.graphType == WMG_Axis_Graph.graphTypes.combo && comboType == comboTypes.bar)) {
+					barAxisAdjust = Mathf.RoundToInt((theGraph.barAxisValue - yAxisOrienInd.AxisMinValue) / (yAxisOrienInd.AxisMaxValue - yAxisOrienInd.AxisMinValue) * theGraph.yAxisLengthOrienInd);
+				}
+
+				float newHeightOrienInd = newY - barAxisAdjust;
+				newY = barAxisAdjust;
+				barIsNegative[i] = false;
+				if (newHeightOrienInd < 0) {
+					newHeightOrienInd *= -1;
+					newY -= newHeightOrienInd;
+					barIsNegative[i] = true;
+				}
+
+				// Update sprite dimensions and increase position using previous point position
+				newWidth = Mathf.RoundToInt(theGraph.barWidth);
+				newHeight = Mathf.RoundToInt(newHeightOrienInd);
+
+				// Previous points is null for side by side bar, but should not be empty for stacked and stacked percentage for series after the first series
+				if (prevPoints != null && i < prevPoints.Count) {
+					newY += (theGraph.orientationType == WMG_Axis_Graph.orientationTypes.vertical) 
+						? theGraph.getSpritePositionY(prevPoints[i]) + theGraph.getSpriteHeight(prevPoints[i])
+							: theGraph.getSpritePositionX(prevPoints[i]) + theGraph.getSpriteWidth(prevPoints[i]);
+				}
+
+			}
+			if (theGraph.orientationType == WMG_Axis_Graph.orientationTypes.horizontal) {
+				WMG_Util.SwapVals(ref newX, ref newY);
+				WMG_Util.SwapVals(ref newWidth, ref newHeight);
+			}
+			afterWidths.Add(newWidth);
+			afterHeights.Add(newHeight);
+			afterPositions.Add(new Vector2(newX, newY));
+		}
+
+		for (int i = points.Count > 0 ? points.Count - 1 : 0; i < points.Count; i++)
+		{
+			if (i >= pointValues.Count) break;
+			theGraph.changeSpritePositionTo(points[i], new Vector3(afterPositions[i].x,
+																   afterPositions[i].y, 0));
+		}
+		for (int i = lines.Count > 0 ? lines.Count - 1 : 0; i < lines.Count; i++)
+		{
+			lines[i].GetComponent<WMG_Link>().Reposition();
+		}
+		for (int i = points.Count > 0 ? points.Count - 1 : 0; i < points.Count; i++)
+		{
+			OnPointSpriteUpdated(this, points[i], i);
+		}
 	}
 
 	void pointValuesValChanged(int index) {
