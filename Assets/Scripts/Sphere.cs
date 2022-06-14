@@ -105,9 +105,10 @@ public class Sphere : MonoBehaviour
                 break;
         }
 
+        float prVelocity = _velocity;
         _velocity += acceleration * DeltaTime;
 
-        CurHeight += (1 / 2f) * _velocity * DeltaTime;
+        CurHeight += _velocity * DeltaTime;
 
         CurHeight = Mathf.Clamp(CurHeight, -_oscillationRadius, _oscillationRadius);
     }
